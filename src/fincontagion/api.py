@@ -45,6 +45,13 @@ USER_DOCUMENT_ROOT = (
     PROJECT_ROOT / "data" / "processed" / "user_documents"
 )
 
+OLLAMA_CHAT_URL = os.getenv(
+    "OLLAMA_CHAT_URL",
+    "http://127.0.0.1:11434/api/chat",
+)
+
+OLLAMA_MODEL_NAME = os.getenv("OLLAMA_MODEL_NAME", "qwen3:1.7b")
+
 
 
 @app.post("/api/documents/upload")
@@ -378,7 +385,7 @@ def answer_tabular_question(
     )
 
     payload = {
-        "model": "qwen3:1.7b",
+        "model": OLLAMA_MODEL_NAME,
         "messages": [
             {"role": "system", "content": system_prompt},
             {
@@ -395,7 +402,7 @@ def answer_tabular_question(
     }
 
     request = Request(
-        "http://127.0.0.1:11434/api/chat",
+        OLLAMA_CHAT_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -558,14 +565,14 @@ def general_finance_chat(request: ChatRequest):
     })
 
     payload = {
-        "model": "qwen3:1.7b",
+        "model": OLLAMA_MODEL_NAME,
         "messages": messages,
         "stream": False,
         "think": False,
     }
 
     ollama_request = Request(
-        "http://127.0.0.1:11434/api/chat",
+        OLLAMA_CHAT_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",

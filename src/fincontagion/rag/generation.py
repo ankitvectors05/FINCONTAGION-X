@@ -1,10 +1,13 @@
 
+import os
 import requests
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen3:1.7b"
-
+OLLAMA_URL = os.getenv(
+    "OLLAMA_GENERATE_URL",
+    "http://localhost:11434/api/generate",
+)
+MODEL_NAME = os.getenv("OLLAMA_MODEL_NAME", "qwen3:1.7b")
 
 def generate_answer(question: str, retrieved_chunks: list[dict]) -> dict:
     """
