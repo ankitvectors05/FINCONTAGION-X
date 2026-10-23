@@ -1,0 +1,5 @@
+model,feature_set,predictor_count,test_rows,test_distress_cases,accuracy,precision_distress,recall_distress,f1_distress,roc_auc,average_precision,evaluation_basis
+Logistic Regression,full,22,80,16,0.9375,0.7619047619047619,1.0,0.8648648648648649,0.9873046875,0.9560554029304029,single_entity_grouped_split_synthetic_data
+Random Forest,full,22,80,16,0.9875,0.9411764705882353,1.0,0.9696969696969697,0.9951171875,0.9789786347231201,single_entity_grouped_split_synthetic_data
+Logistic Regression,without_scenario_severity,20,80,16,0.675,0.375,0.9375,0.5357142857142857,0.8046875,0.40846636002886,single_entity_grouped_split_synthetic_data
+Random Forest,without_scenario_severity,20,80,16,0.65,0.36363636363636365,1.0,0.5333333333333333,0.8359375,0.45806333423520923,single_entity_grouped_split_synthetic_data

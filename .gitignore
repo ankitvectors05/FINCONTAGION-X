@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Local uploads and generated retrieval caches
+data/processed/user_documents/
+data/processed/rag_cache_test/
+
+# Local model and tool caches
+.cache/
+.huggingface/
+.cache/huggingface/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

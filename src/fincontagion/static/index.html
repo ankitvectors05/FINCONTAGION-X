@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FINCONTAGION-X | Network Explorer</title>
+
+    <!-- Cytoscape.js renders the interactive financial network. -->
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0b1120;
+            --panel: #111a2b;
+            --border: #253248;
+            --text: #e5edf8;
+            --muted: #94a3b8;
+            --accent: #60a5fa;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        h1 { margin: 0; font-size: 22px; }
+        h2 { font-size: 15px; margin: 0; }
+        p { color: var(--muted); }
+        .subtitle { margin: 6px 0 0; font-size: 13px; }
+
+        .status {
+            font-size: 12px;
+            color: #86efac;
+            border: 1px solid #245b48;
+            border-radius: 20px;
+            padding: 7px 11px;
+        }
+
+        main { padding: 20px 24px; }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .panel, .metric {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .metric { padding: 16px; }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .metric-value {
+            font-size: 25px;
+            font-weight: 650;
+            margin-top: 9px;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 270px;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        input, button, select {
+            font: inherit;
+            font-size: 12px;
+            color: var(--text);
+            background: #172338;
+            border: 1px solid #34445d;
+            border-radius: 7px;
+            padding: 9px 11px;
+        }
+
+        input { width: 190px; }
+
+        button { cursor: pointer; }
+        button:hover { border-color: var(--accent); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        #network {
+            height: 720px;
+            width: 100%;
+            background-color: #0d1626;
+            background-image: radial-gradient(#29374d 0.8px, transparent 0.8px);
+            background-size: 22px 22px;
+        }
+
+        .legend {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 13px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .details { padding: 16px; }
+
+        .details p {
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+
+        .details strong { color: var(--text); }
+
+        #message {
+            padding: 10px 16px;
+            font-size: 12px;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+        }
+
+        .error { color: #fca5a5 !important; }
+        .hint { font-size: 11px; line-height: 1.5; }
+
+        /* Financial analytics dashboard */
+        .analytics-section { margin-bottom: 18px; }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .analytics-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            min-width: 0;
+        }
+
+        .analytics-card .metric-value {
+            font-size: 21px;
+            overflow-wrap: anywhere;
+        }
+
+        .analytics-note {
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        .analytics-table-wrap { overflow-x: auto; }
+
+        .analytics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .analytics-table th,
+        .analytics-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .analytics-table th {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .risk-high {
+            color: #fca5a5;
+            font-weight: 600;
+        }
+
+        .risk-medium { color: #fcd34d; }
+
+        .risk-low {
+            color: #86efac;
+            font-weight: 600;
+        }
+
+        .filter-label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .filter-label input,
+        .filter-label select {
+            min-width: 125px;
+        }
+
+        .ml-filters {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .ml-results {
+            padding: 0 16px 12px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .empty-row {
+            color: var(--muted);
+            text-align: center;
+            padding: 22px !important;
+        }
+
+        @media (max-width: 850px) {
+            .analytics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .workspace { grid-template-columns: 1fr; }
+            #network { height: 500px; }
+        }
+
+        @media (max-width: 520px) {
+            .analytics-grid { grid-template-columns: 1fr; }
+            main { padding: 12px; }
+            header { padding: 16px; }
+            .metrics { grid-template-columns: 1fr; }
+            #network { height: 430px; }
+            input { width: 100%; }
+            .filter-label { width: 100%; }
+            .filter-label input,
+            .filter-label select { width: 100%; }
+        }
+
+        /* Application shell and workspace navigation */
+        body { min-height: 100vh; }
+        .app-shell { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 100vh; }
+        .sidebar {
+            background: #0e1728; border-right: 1px solid var(--border);
+            padding: 22px 14px; display: flex; flex-direction: column; gap: 22px;
+        }
+        .brand { padding: 2px 10px 18px; border-bottom: 1px solid var(--border); }
+        .brand-mark { color: #93c5fd; font-size: 11px; font-weight: 700; letter-spacing: 2px; }
+        .brand-name { margin-top: 8px; font-size: 17px; font-weight: 750; letter-spacing: .3px; }
+        .brand-subtitle { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 6px; }
+        .nav-label { color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 0 10px; }
+        .side-nav { display: grid; gap: 6px; }
+        .nav-item {
+            display: flex; align-items: center; gap: 11px; width: 100%;
+            text-align: left; border: 1px solid transparent; background: transparent;
+            color: #a9b8cc; padding: 12px 11px; border-radius: 9px;
+            font-size: 13px; transition: background .15s ease, border-color .15s ease;
+        }
+        .nav-item:hover { background: #172338; border-color: #2c3b52; }
+        .nav-item.active { background: #172b46; border-color: #2f527b; color: #e5edf8; }
+        .nav-icon { width: 22px; text-align: center; color: #93c5fd; font-size: 16px; }
+        .sidebar-note { margin-top: auto; padding: 12px; border: 1px solid var(--border); border-radius: 9px; }
+        .sidebar-note strong { display: block; font-size: 11px; margin-bottom: 5px; }
+        .sidebar-note span { color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .app-main { min-width: 0; }
+        .topbar { min-height: 76px; padding: 17px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); background: rgba(17,26,43,.72); }
+        .topbar h1 { font-size: 19px; }
+        .topbar p { margin: 5px 0 0; font-size: 12px; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .research-intro { margin: 0 0 18px; }
+        .research-intro h2 { font-size: 22px; margin-bottom: 8px; }
+        .research-intro p { font-size: 13px; line-height: 1.7; max-width: 780px; }
+        .research-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 16px; align-items: start; }
+        .research-content { padding: 18px; }
+        .research-field { display: grid; gap: 8px; margin-bottom: 16px; }
+        .research-field label { color: var(--muted); font-size: 12px; font-weight: 600; }
+        .research-field input, .research-field textarea { width: 100%; }
+        .research-field input[type="file"] { padding: 12px; }
+        .research-field textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+        .primary-action { background: #1d4ed8; border-color: #3b82f6; color: white; font-weight: 600; }
+        .primary-action:hover { background: #1e40af; }
+        .research-actions { display: flex; gap: 9px; flex-wrap: wrap; }
+        .research-status { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 12px; overflow-wrap: anywhere; }
+        .research-answer { min-height: 120px; white-space: pre-wrap; line-height: 1.75; font-size: 13px; overflow-wrap: anywhere; }
+        .research-sources { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+        .research-sources h3 { font-size: 12px; margin: 0 0 10px; }
+        .research-source { color: var(--muted); font-size: 12px; margin: 7px 0; }
+        .research-empty { color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .research-error { color: #fca5a5; }
+        .chat-layout { display: grid; grid-template-columns: minmax(245px, .32fr) minmax(0, 1fr); gap: 16px; align-items: stretch; min-height: 650px; }
+        .chat-context-panel, .chat-panel { min-width: 0; }
+        .context-pill { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 7px 10px; font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+        .research-divider { border-top: 1px solid var(--border); margin: 18px 0; }
+        .context-heading { font-size: 12px; margin: 0 0 10px; }
+        .context-list { padding-left: 18px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
+        .chat-panel { display: flex; flex-direction: column; min-height: 650px; }
+        .chat-header > div { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .chat-messages { flex: 1; min-height: 330px; max-height: 58vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+        .chat-welcome { margin: auto; max-width: 560px; text-align: center; padding: 24px 10px; }
+        .welcome-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; margin: 0 auto 16px; background: rgba(59,130,246,.16); border: 1px solid rgba(96,165,250,.35); font-weight: 800; }
+        .chat-welcome h3 { font-size: 20px; margin: 0 0 8px; }
+        .chat-welcome p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+        .suggestion-list { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+        .suggestion-chip { font-size: 11px; line-height: 1.5; border-radius: 999px; }
+        .chat-message { display: flex; flex-direction: column; gap: 6px; max-width: 88%; }
+        .chat-message.user { align-self: flex-end; align-items: flex-end; }
+        .chat-message.assistant { align-self: flex-start; align-items: flex-start; }
+        .chat-role { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+        .chat-bubble { border: 1px solid var(--border); border-radius: 15px; padding: 12px 14px; font-size: 13px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .chat-message.user .chat-bubble { background: rgba(59,130,246,.13); border-color: rgba(96,165,250,.35); }
+        .chat-message.assistant .chat-bubble { background: var(--panel, rgba(255,255,255,.025)); }
+        .chat-message.pending .chat-bubble { color: var(--muted); font-style: italic; }
+        .chat-composer-wrap { border-top: 1px solid var(--border); padding: 14px 16px 8px; }
+        .chat-composer { border: 1px solid var(--border); border-radius: 15px; padding: 10px; background: rgba(127,127,127,.035); }
+        .chat-composer textarea { width: 100%; border: 0; box-shadow: none; resize: vertical; min-height: 48px; max-height: 180px; background: transparent; padding: 7px; line-height: 1.6; }
+        .chat-composer textarea:focus { outline: none; box-shadow: none; }
+        .composer-actions, .composer-left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .composer-actions { justify-content: space-between; margin-top: 7px; }
+        .composer-left button, .send-button { font-size: 11px; padding: 8px 11px; }
+        .send-button { min-width: 88px; }
+        .chat-disclaimer { color: var(--muted); font-size: 10px; line-height: 1.6; margin: 9px 2px 0; }
+        .attachment-chip { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 5px 9px; font-size: 11px; margin-bottom: 8px; }
+        .message-sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+        .message-actions { display: flex; gap: 6px; margin-top: 5px; }
+        .message-actions button { font-size: 10px; padding: 5px 8px; }
+        @media (max-width: 900px) {
+            .app-shell { grid-template-columns: 190px minmax(0, 1fr); }
+            .research-grid, .chat-layout { grid-template-columns: 1fr; }
+            .chat-context-panel { order: 2; }
+            .chat-messages { max-height: 55vh; }
+        }
+        @media (max-width: 650px) {
+            .app-shell { grid-template-columns: 1fr; }
+            .sidebar { padding: 12px; border-right: 0; border-bottom: 1px solid var(--border); gap: 12px; }
+            .brand { padding: 4px 8px 10px; }
+            .side-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .nav-label, .sidebar-note { display: none; }
+            .nav-item { justify-content: center; padding: 10px 6px; font-size: 12px; }
+            .topbar { padding: 14px; }
+            .chat-message { max-width: 96%; }
+            .chat-composer-wrap { padding: 10px; }
+        }
+
+    </style>
+</head>
+
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">FINANCIAL SYSTEMS INTELLIGENCE</div>
+            <div class="brand-name">FINCONTAGION-X</div>
+            <div class="brand-subtitle">Financial Contagion &amp; AI-Powered Risk Intelligence</div>
+        </div>
+        <div class="nav-label">WORKSPACES</div>
+        <nav class="side-nav" aria-label="Dashboard workspaces">
+            <button class="nav-item active" type="button" data-view="contagion-view" aria-current="page">
+                <span class="nav-icon">⌘</span><span>Contagion Analytics</span>
+            </button>
+            <button class="nav-item" type="button" data-view="document-view">
+                <span class="nav-icon">▤</span><span>Document Research</span>
+            </button>
+        </nav>
+        <div class="sidebar-note">
+            <strong>Research workspace</strong>
+            <span>Document upload and source-backed Q&amp;A are kept separate from the contagion dashboard.</span>
+        </div>
+    </aside>
+    <div class="app-main">
+        <header class="topbar">
+            <div>
+                <h1 id="page-title">Contagion Analytics</h1>
+                <p class="subtitle" id="page-subtitle">Network exposure, stress propagation and early-warning intelligence</p>
+            </div>
+            <span class="status" id="connection">Connecting to API...</span>
+        </header>
+
+        <main id="contagion-view" class="view active">
+    <!-- Summary metrics -->
+    <section class="metrics">
+        <div class="metric">
+            <div class="metric-label">Financial entities</div>
+            <div class="metric-value" id="node-count">—</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Exposure relationships</div>
+            <div class="metric-value" id="edge-count">—</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Recorded exposure · INR</div>
+            <div class="metric-value" id="exposure-total">—</div>
+        </div>
+    </section>
+
+    <!-- 1. NETWORK GRAPH FIRST -->
+    <section class="workspace">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Financial Network Explorer</h2>
+
+                <div class="controls">
+                    <select id="entity-type" aria-label="Choose entity type">
+                        <option value="">Choose entity type...</option>
+                        <option value="bank">Banks</option>
+                        <option value="supplier">Suppliers</option>
+                        <option value="corporation">Corporations</option>
+                        <option value="nbfc">NBFCs</option>
+                        <option value="investment_fund">Investment funds</option>
+                    </select>
+
+                    <select id="entity-choice" aria-label="Choose entity" disabled>
+                        <option value="">Choose entity...</option>
+                    </select>
+
+                    <input
+                        id="search"
+                        type="search"
+                        placeholder="Search by ID or name"
+                        aria-label="Search financial entities"
+                    >
+
+                    <button id="search-button">Find</button>
+                    <button id="reset-button">Reset</button>
+                    <button id="layout-button">Spread graph</button>
+                </div>
+            </div>
+
+            <div
+                id="network"
+                role="img"
+                aria-label="Interactive graph of financial entities and exposures"
+            ></div>
+
+            <div class="legend">
+                <span class="legend-item">
+                    <i class="dot" style="background:#60a5fa"></i>Banks
+                </span>
+                <span class="legend-item">
+                    <i class="dot" style="background:#34d399"></i>Corporations
+                </span>
+                <span class="legend-item">
+                    <i class="dot" style="background:#fbbf24"></i>NBFCs
+                </span>
+                <span class="legend-item">
+                    <i class="dot" style="background:#c084fc"></i>Investment funds
+                </span>
+                <span class="legend-item">
+                    <i class="dot" style="background:#fb7185"></i>Suppliers
+                </span>
+            </div>
+
+            <div id="message" aria-live="polite">
+                Waiting for network data.
+            </div>
+        </div>
+
+        <aside class="panel">
+            <div class="panel-header">
+                <h2>Entity Details</h2>
+            </div>
+
+            <div class="details" id="details">
+                <p>Select a node in the graph to inspect an entity.</p>
+                <p class="hint">
+                    Arrow direction follows the API convention:
+                    creditor → debtor. Edge width represents relative
+                    recorded exposure, not risk or probability of default.
+                </p>
+            </div>
+        </aside>
+    </section>
+
+    <!-- 2. FINANCIAL STRESS ANALYTICS -->
+    <section class="analytics-section">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Financial Stress Overview</h2>
+                <span class="status" id="analytics-status">
+                    Loading analytics...
+                </span>
+            </div>
+
+            <div class="details">
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="metric-label">Credit losses</div>
+                        <div class="metric-value" id="credit-loss">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Market losses</div>
+                        <div class="metric-value" id="market-loss">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Interest-rate losses</div>
+                        <div class="metric-value" id="interest-loss">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Funding withdrawals</div>
+                        <div class="metric-value" id="funding-withdrawals">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Total accounting losses</div>
+                        <div class="metric-value" id="accounting-loss">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Liquidity shortfall</div>
+                        <div class="metric-value" id="liquidity-shortfall">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Negative stressed equity</div>
+                        <div class="metric-value" id="negative-equity">—</div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="metric-label">Entities assessed</div>
+                        <div class="metric-value" id="entities-assessed">—</div>
+                    </div>
+                </div>
+
+                <p class="analytics-note" id="analytics-note">
+                    Waiting for financial stress results.
+                </p>
+            </div>
+        </div>
+        
+        
+        <!-- Scenario-linked contagion analytics -->
+        <div class="panel" style="margin-top: 16px;" id="contagion-scenario-panel">
+            <div class="panel-header">
+                <h2>Scenario Contagion Analysis</h2>
+                <div class="controls">
+                    <label class="filter-label" for="contagion-scenario-filter">
+                        Stress scenario
+                        <select id="contagion-scenario-filter">
+                            <option value="SCENARIO_MILD">Mild</option>
+                            <option value="SCENARIO_MODERATE">Moderate</option>
+                            <option value="SCENARIO_SEVERE">Severe</option>
+                            <option value="SCENARIO_EXTREME">Extreme</option>
+                        </select>
+                    </label>
+                </div>
+                <span class="status" id="contagion-scenario-status">
+                    Loading contagion results...
+                </span>
+            </div>
+
+            <div class="details">
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="metric-label">Entities in results</div>
+                        <div class="metric-value" id="contagion-entity-count">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="metric-label">Affected entities</div>
+                        <div class="metric-value" id="contagion-affected-count">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="metric-label">Additional defaults</div>
+                        <div class="metric-value" id="contagion-default-count">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="metric-label">Incremental contagion losses</div>
+                        <div class="metric-value" id="contagion-loss-total">—</div>
+                    </div>
+                </div>
+
+                <p class="analytics-note" id="contagion-scenario-note">
+                    Loading saved propagation results.
+                </p>
+                <p class="analytics-note">
+                    These are incremental losses from contagion propagation, not
+                    integrated credit, market, interest-rate, or funding stress totals.
+                    Summary values are derived from the saved propagation records.
+                </p>
+            </div>
+
+            <div class="analytics-table-wrap">
+                <table class="analytics-table">
+                    <thead id="contagion-table-head">
+                        <tr><th>Propagation results</th></tr>
+                    </thead>
+                    <tbody id="contagion-table-body">
+                        <tr><td class="empty-row">Loading results...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+        <!-- Systemic risk rankings -->
+        <div class="panel" style="margin-top: 16px;">
+            <div class="panel-header">
+                <h2>Highest Systemic-Risk Entities</h2>
+            </div>
+
+            <div class="analytics-table-wrap">
+                <table class="analytics-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Entity</th>
+                            <th>Type</th>
+                            <th>Risk score</th>
+                            <th>Risk tier</th>
+                        </tr>
+                    </thead>
+                    <tbody id="risk-table-body">
+                        <tr>
+                            <td colspan="5" class="empty-row">
+                                Loading risk rankings...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ML early-warning predictions and filters -->
+        <div class="panel" style="margin-top: 16px;">
+            <div class="panel-header">
+                <h2>ML Early-Warning Signals</h2>
+            </div>
+
+            <div class="controls ml-filters">
+                <label class="filter-label">
+                    Show results
+                    <select id="ml-limit" aria-label="Number of ML warnings to show">
+                        <option value="10">Top 10</option>
+                        <option value="15">Top 15</option>
+                        <option value="25">Top 25</option>
+                        <option value="50">Top 50</option>
+                        <option value="all">All results</option>
+                    </select>
+                </label>
+
+                <label class="filter-label">
+                    Risk level
+                    <select id="ml-risk-filter" aria-label="Filter by warning band">
+                        <option value="all">All risk levels</option>
+                        <option value="high">High</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="low">Low</option>
+                        <option value="unknown">Unknown</option>
+                    </select>
+                </label>
+
+                <label class="filter-label">
+                    Scenario
+                    <select id="ml-scenario-filter" aria-label="Filter by scenario">
+                        <option value="all">All scenarios</option>
+                    </select>
+                </label>
+
+                <label class="filter-label">
+                    Model agreement
+                    <select id="ml-agreement-filter" aria-label="Filter by model agreement">
+                        <option value="all">All</option>
+                        <option value="agree">Agree</option>
+                        <option value="disagree">Disagree</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
+                </label>
+
+                <label class="filter-label">
+                    Search entity
+                    <input
+                        id="ml-entity-search"
+                        type="search"
+                        placeholder="e.g. BANK_0005"
+                        aria-label="Search ML warning entity"
+                    >
+                </label>
+            </div>
+
+            <p class="ml-results" id="ml-results-count">
+                Loading ML predictions...
+            </p>
+
+            <div class="analytics-table-wrap">
+                <table class="analytics-table">
+                    <thead>
+                        <tr>
+                            <th>Entity</th>
+                            <th>Scenario</th>
+                            <th>Logistic regression</th>
+                            <th>Random forest</th>
+                            <th>Warning band</th>
+                            <th>Model agreement</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ml-table-body">
+                        <tr>
+                            <td colspan="6" class="empty-row">
+                                Loading ML predictions...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="details">
+                <p class="analytics-note">
+                    Model probabilities and warning bands are experimental
+                    outputs from synthetic data, not calibrated real-world
+                    default probabilities. Model agreement compares predicted
+                    classes; disagreement indicates that the models differ,
+                    not proof that either model is correct.
+                </p>
+            </div>
+        </div>
+    </section>
+        </main>
+
+        <!-- Separate workspace: chat-based finance and document research. -->
+        <main id="document-view" class="view">
+            <section class="research-intro">
+                <h2>Financial Research Assistant</h2>
+                <p>Ask general finance questions or upload a document for evidence-based analysis. Keep asking follow-ups in the same conversation; start a new chat whenever you want a clean context.</p>
+            </section>
+            <section class="chat-layout">
+                <aside class="panel chat-context-panel">
+                    <div class="panel-header"><h2>Research context</h2></div>
+                    <div class="research-content">
+                        <div class="context-pill" id="chat-context-state">General finance · no document attached</div>
+                        <div class="research-field">
+                            <label for="document-file">Attach a financial document</label>
+                            <input id="document-file" type="file" accept="application/pdf,.pdf,.csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                            
+                        </div>
+                        <div class="research-actions">
+                            <button id="upload-document-button" class="primary-action" type="button">Upload PDF</button>
+                            <button id="clear-document-button" type="button">Remove selection</button>
+                        </div>
+                        <div id="document-upload-status" class="research-status" aria-live="polite">You can ask general questions without uploading a file.</div>
+                        <div id="document-id-display" class="research-status"></div>
+                        <div class="research-divider"></div>
+                        <h3 class="context-heading">How answers are handled</h3>
+                        <ul class="context-list">
+                            <li>General finance questions do not require a document.</li>
+                            <li>Document answers should include source references when the backend provides them.</li>
+                            <li>Model estimates and assumptions should not be presented as verified financial facts.</li>
+                        </ul>
+                    </div>
+                </aside>
+                <section class="panel chat-panel" aria-label="Financial research conversation">
+                    <div class="panel-header chat-header">
+                        <div><h2>Conversation</h2><span id="chat-status" class="status">Ready</span></div>
+                        <button id="new-chat-button" type="button">＋ New chat</button>
+                    </div>
+                    <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-relevant="additions text">
+                        <div class="chat-welcome" id="chat-welcome">
+                            <div class="welcome-mark">FX</div>
+                            <h3>What would you like to understand?</h3>
+                            <p>Ask about financial concepts, business metrics, banking, markets, or attach a document to investigate its contents.</p>
+                            <div class="suggestion-list">
+                                <button type="button" class="suggestion-chip" data-prompt="Explain the difference between revenue, profit, cash flow, and working capital.">Revenue vs profit vs cash flow</button>
+                                <button type="button" class="suggestion-chip" data-prompt="Explain how banks measure credit risk and calculate expected credit loss.">Bank credit risk</button>
+                                <button type="button" class="suggestion-chip" data-prompt="What is financial contagion, and how can losses propagate from one bank to other institutions through exposures?">Financial contagion</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-composer-wrap">
+                        <div id="chat-attachment-chip" class="attachment-chip" hidden></div>
+                        <div class="chat-composer">
+                            <textarea id="document-question" aria-label="Message the financial assistant" placeholder="Ask a finance question or follow up on the previous answer…" rows="2"></textarea>
+                            <div class="composer-actions">
+                                <div class="composer-left">
+                                    <button id="voice-input-button" type="button" title="Speak your question">🎙 Voice</button>
+                                    <button id="voice-output-button" type="button" title="Toggle spoken answers" aria-pressed="false">🔊 Read answers: off</button>
+                                </div>
+                                <button id="ask-document-button" class="primary-action send-button" type="button">Send ↗</button>
+                            </div>
+                        </div>
+                        <div id="document-answer-status" class="research-status" aria-live="polite">Ready. General finance answers require the general-chat backend route, which is the next backend implementation step.</div>
+                        <p class="chat-disclaimer">Financial research support only. Verify consequential decisions against reliable sources; synthetic project outputs are not real-world forecasts.</p>
+                    </div>
+                    <div class="research-sources" id="source-panel"><h3>Sources for the latest answer</h3><div id="document-sources" class="research-empty">Source references will appear here when available.</div></div>
+                </section>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script>
+    const message = document.getElementById("message");
+    const connection = document.getElementById("connection");
+    const details = document.getElementById("details");
+
+    let cy = null;
+    let networkData = null;
+    let analyticsData = null;
+
+    const colors = {
+        bank: "#60a5fa",
+        corporation: "#34d399",
+        nbfc: "#fbbf24",
+        investment_fund: "#c084fc",
+        supplier: "#fb7185"
+    };
+
+    function formatMoney(value) {
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) return "—";
+
+        return new Intl.NumberFormat("en-IN", {
+            maximumFractionDigits: 0
+        }).format(number);
+    }
+
+    function formatINR(value) {
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) return "—";
+
+        return new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0
+        }).format(number);
+    }
+
+    function formatNumber(value) {
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) return "—";
+
+        return number.toLocaleString("en-IN");
+    }
+
+    function formatPercent(value) {
+        if (value == null || value === "") return "—";
+
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) return "—";
+
+        return `${(number * 100).toFixed(1)}%`;
+    }
+
+    function showError(error) {
+        connection.textContent = "API unavailable";
+        connection.style.color = "#fca5a5";
+        message.textContent = error.message || String(error);
+        message.classList.add("error");
+    }
+
+    function appendTextCell(row, value, className = "") {
+        const cell = document.createElement("td");
+        cell.textContent = value == null ? "—" : String(value);
+
+        if (className) cell.className = className;
+
+        row.appendChild(cell);
+        return cell;
+    }
+
+    function showEntity(node) {
+        const data = node.data();
+
+        const outgoing = cy.edges().filter(edge =>
+            edge.data("source") === data.id
+        );
+
+        const incoming = cy.edges().filter(edge =>
+            edge.data("target") === data.id
+        );
+
+        const outgoingTotal = outgoing.reduce(
+            (sum, edge) => sum + Number(edge.data("amount") || 0), 0
+        );
+
+        const incomingTotal = incoming.reduce(
+            (sum, edge) => sum + Number(edge.data("amount") || 0), 0
+        );
+
+        details.replaceChildren();
+
+        const fields = [
+            ["Entity", data.label],
+            ["Entity ID", data.id],
+            ["Type", String(data.type || "unknown").replaceAll("_", " ")],
+            ["Country", data.country],
+            ["Outgoing relationships", outgoing.length],
+            ["Incoming relationships", incoming.length],
+            ["Recorded outgoing exposure", "INR " + formatMoney(outgoingTotal)],
+            ["Recorded incoming exposure", "INR " + formatMoney(incomingTotal)]
+        ];
+
+        for (const [label, value] of fields) {
+            const p = document.createElement("p");
+            const strong = document.createElement("strong");
+
+            strong.textContent = label + ": ";
+            p.append(strong, document.createTextNode(String(value ?? "—")));
+            details.appendChild(p);
+        }
+
+        function addRelationshipSection(title, edges, connectedNodeKey) {
+            const heading = document.createElement("p");
+            const strong = document.createElement("strong");
+
+            strong.textContent = `${title} (${edges.length})`;
+            heading.appendChild(strong);
+            details.appendChild(heading);
+
+            const list = document.createElement("ul");
+
+            if (edges.length === 0) {
+                const item = document.createElement("li");
+                item.textContent = "No relationships recorded.";
+                list.appendChild(item);
+            }
+
+            edges.forEach(edge => {
+                const connectedId = edge.data(connectedNodeKey);
+                const connectedNode = cy.getElementById(connectedId);
+                const connectedName = connectedNode.data("label");
+
+                const item = document.createElement("li");
+                item.textContent =
+                    `${connectedName} (${connectedId}) — ` +
+                    `${edge.data("currency") || "INR"} ` +
+                    `${formatMoney(edge.data("amount"))}`;
+
+                list.appendChild(item);
+            });
+
+            details.appendChild(list);
+        }
+
+        addRelationshipSection(
+            "Outgoing — this entity lends to",
+            outgoing,
+            "target"
+        );
+
+        addRelationshipSection(
+            "Incoming — this entity borrows from",
+            incoming,
+            "source"
+        );
+
+        const note = document.createElement("p");
+        note.className = "hint";
+        note.textContent =
+            "Exposure amounts are recorded relationship values, " +
+            "not stress losses or unique system-wide capital.";
+
+        details.appendChild(note);
+    }
+
+    function buildGraph(data) {
+        if (typeof cytoscape === "undefined") {
+            throw new Error(
+                "Cytoscape.js did not load. Check your internet connection."
+            );
+        }
+
+        if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+            throw new Error(
+                "The /api/network response must contain nodes and edges arrays."
+            );
+        }
+
+        const nodes = data.nodes.map(node => ({
+            data: {
+                id: String(node.id),
+                label: String(node.label ?? node.id),
+                type: node.type ?? "unknown",
+                country: node.country ?? "—"
+            }
+        }));
+
+        const maxAmount = Math.max(
+            1,
+            ...data.edges.map(edge => Number(edge.amount) || 0)
+        );
+
+        const edges = data.edges.map((edge, index) => ({
+            data: {
+                id: String(edge.id ?? `edge-${index}`),
+                source: String(edge.source),
+                target: String(edge.target),
+                amount: Number(edge.amount) || 0,
+                currency: edge.currency ?? "INR",
+                width: 0.8 + 3.2 * Math.sqrt(
+                    (Number(edge.amount) || 0) / maxAmount
+                )
+            }
+        }));
+
+        cy = cytoscape({
+            container: document.getElementById("network"),
+            elements: { nodes, edges },
+            minZoom: 0.15,
+            maxZoom: 3,
+
+            style: [
+                {
+                    selector: "node",
+                    style: {
+                        "background-color": ele =>
+                            colors[ele.data("type")] || "#94a3b8",
+                        "label": "",
+                        "color": "#dbeafe",
+                        "font-size": 10,
+                        "text-wrap": "wrap",
+                        "text-max-width": 75,
+                        "text-valign": "bottom",
+                        "text-margin-y": 5,
+                        "width": 16,
+                        "height": 16,
+                        "border-width": 1,
+                        "border-color": "#dbeafe"
+                    }
+                },
+                {
+                    selector: "edge",
+                    style: {
+                        "width": "data(width)",
+                        "line-color": "#536780",
+                        "target-arrow-color": "#8ba6c4",
+                        "target-arrow-shape": "triangle",
+                        "curve-style": "bezier",
+                        "opacity": 0.62,
+                        "arrow-scale": 0.7
+                    }
+                },
+                {
+                    selector: "node:selected",
+                    style: {
+                        "border-width": 4,
+                        "border-color": "#ffffff",
+                        "width": 27,
+                        "height": 27,
+                        "label": "data(label)",
+                        "font-size": 12,
+                        "z-index": 999
+                    }
+                },
+                {
+                    selector: ".dimmed",
+                    style: { "opacity": 0.12 }
+                },
+                {
+                    selector: ".highlighted",
+                    style: {
+                        "opacity": 1,
+                        "line-color": "#f8fafc",
+                        "target-arrow-color": "#f8fafc",
+                        "z-index": 999
+                    }
+                }
+            ],
+
+            layout: {
+                name: "cose",
+                animate: false,
+                fit: true,
+                padding: 35,
+                nodeRepulsion: 18000,
+                idealEdgeLength: 130,
+                gravity: 0.12
+            }
+        });
+
+        cy.on("tap", "node", event => {
+            const node = event.target;
+            showEntity(node);
+
+            cy.elements().removeClass("dimmed highlighted");
+            cy.elements().addClass("dimmed");
+
+            node.closedNeighborhood()
+                .removeClass("dimmed")
+                .addClass("highlighted");
+        });
+
+        cy.on("tap", event => {
+            if (event.target === cy) {
+                cy.elements().removeClass("dimmed highlighted");
+            }
+        });
+
+        const summary = data.summary ?? {};
+
+        document.getElementById("node-count").textContent =
+            formatNumber(summary.node_count ?? nodes.length);
+
+        document.getElementById("edge-count").textContent =
+            formatNumber(summary.edge_count ?? edges.length);
+
+        const totals = Object.entries(
+            summary.exposure_by_currency || {}
+        ).map(([currency, amount]) =>
+            `${currency} ${formatMoney(amount)}`
+        );
+
+        document.getElementById("exposure-total").textContent =
+            totals.join(" / ") || "Unavailable";
+
+        connection.textContent = "API connected";
+        connection.style.color = "#86efac";
+        message.classList.remove("error");
+        message.textContent =
+            "Network loaded. Select a node to inspect its relationships.";
+
+        populateEntityChoices();
+    }
+
+    async function loadNetwork() {
+        try {
+            message.textContent = "Loading network data...";
+
+            const response = await fetch("/api/network");
+
+            if (!response.ok) {
+                throw new Error(
+                    "API request failed with HTTP " + response.status
+                );
+            }
+
+            networkData = await response.json();
+            buildGraph(networkData);
+        } catch (error) {
+            console.error("Failed to load network:", error);
+            showError(error);
+        }
+    }
+
+    const typeSelect = document.getElementById("entity-type");
+    const entitySelect = document.getElementById("entity-choice");
+
+    function populateEntityChoices() {
+        if (!networkData) return;
+
+        const selectedType = typeSelect.value;
+
+        entitySelect.replaceChildren(
+            new Option(
+                selectedType ? "Choose an entity..." : "Choose a type first...",
+                ""
+            )
+        );
+
+        const matchingEntities = networkData.nodes
+            .filter(node => !selectedType || node.type === selectedType)
+            .sort((a, b) =>
+                String(a.label ?? a.id).localeCompare(
+                    String(b.label ?? b.id)
+                )
+            );
+
+        for (const entity of matchingEntities) {
+            entitySelect.add(
+                new Option(
+                    `${entity.label ?? entity.id} (${entity.id})`,
+                    entity.id
+                )
+            );
+        }
+
+        entitySelect.disabled = !selectedType;
+    }
+
+    function focusEntity(entityId) {
+        if (!cy || !entityId) return;
+
+        const node = cy.getElementById(entityId);
+
+        if (node.empty()) {
+            message.textContent = "Entity not found in the graph.";
+            return;
+        }
+
+        cy.elements().removeClass("dimmed highlighted selected");
+        cy.elements().addClass("dimmed");
+
+        node.select();
+
+        node.closedNeighborhood()
+            .removeClass("dimmed")
+            .addClass("highlighted");
+
+        node.removeClass("dimmed").addClass("highlighted");
+
+        cy.animate({
+            fit: {
+                eles: node.closedNeighborhood(),
+                padding: 120
+            },
+            duration: 450
+        });
+
+        showEntity(node);
+
+        message.textContent =
+            `Selected ${node.data("label")} (${node.data("id")}).`;
+    }
+
+    typeSelect.addEventListener("change", () => {
+        populateEntityChoices();
+
+        if (cy) {
+            cy.elements().removeClass("dimmed highlighted selected");
+        }
+
+        message.textContent = typeSelect.value
+            ? "Choose an entity from the filtered list."
+            : "Choose an entity type to begin.";
+    });
+
+    entitySelect.addEventListener("change", () => {
+        focusEntity(entitySelect.value);
+    });
+
+    function searchEntity() {
+        if (!cy) return;
+
+        const query = document.getElementById("search").value
+            .trim()
+            .toLowerCase();
+
+        cy.elements().removeClass("dimmed highlighted");
+
+        if (!query) {
+            message.textContent = "Search cleared.";
+            return;
+        }
+
+        const matches = cy.nodes().filter(node =>
+            String(node.data("id")).toLowerCase().includes(query) ||
+            String(node.data("label")).toLowerCase().includes(query)
+        );
+
+        if (matches.length === 0) {
+            message.textContent = "No matching entity found.";
+            return;
+        }
+
+        focusEntity(matches[0].id());
+
+        if (matches.length > 1) {
+            message.textContent =
+                `${matches.length} matches found. Focused on the first: ` +
+                `${matches[0].data("label")} (${matches[0].data("id")}).`;
+        }
+    }
+
+    document.getElementById("search-button")
+        .addEventListener("click", searchEntity);
+
+    document.getElementById("search")
+        .addEventListener("keydown", event => {
+            if (event.key === "Enter") searchEntity();
+        });
+
+    document.getElementById("reset-button")
+        .addEventListener("click", () => {
+            if (!cy) return;
+
+            document.getElementById("search").value = "";
+            typeSelect.value = "";
+            entitySelect.value = "";
+            populateEntityChoices();
+
+            cy.elements().removeClass("dimmed highlighted selected");
+
+            cy.animate({
+                fit: { eles: cy.elements(), padding: 35 },
+                duration: 350
+            });
+
+            details.replaceChildren();
+
+            const p = document.createElement("p");
+            p.textContent =
+                "Select a node in the graph to inspect an entity.";
+
+            details.appendChild(p);
+
+            const hint = document.createElement("p");
+            hint.className = "hint";
+            hint.textContent =
+                "Select a node to inspect its recorded relationships.";
+
+            details.appendChild(hint);
+
+            message.textContent = "Network view reset.";
+        });
+
+    document.getElementById("layout-button")
+        .addEventListener("click", () => {
+            if (!cy) return;
+
+            cy.layout({
+                name: "cose",
+                animate: true,
+                animationDuration: 500,
+                fit: true,
+                padding: 35,
+                nodeRepulsion: 7000,
+                idealEdgeLength: 75,
+                gravity: 0.25
+            }).run();
+        });
+
+    // Load the network graph.
+    loadNetwork();
+
+    // ---------------- FINANCIAL ANALYTICS ----------------
+
+    function setEmptyRow(tbody, colspan, text) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = colspan;
+        cell.className = "empty-row";
+        cell.textContent = text;
+
+        row.appendChild(cell);
+        tbody.replaceChildren(row);
+    }
+
+    function renderRiskEntities(entities) {
+        const body = document.getElementById("risk-table-body");
+        body.replaceChildren();
+
+        if (!entities.length) {
+            setEmptyRow(body, 5, "No risk-ranking records available.");
+            return;
+        }
+
+        entities.forEach((entity, index) => {
+            const row = document.createElement("tr");
+
+            appendTextCell(
+                row,
+                entity.systemic_risk_rank ?? index + 1
+            );
+
+            appendTextCell(row, entity.entity_id);
+            appendTextCell(row, entity.entity_type);
+            appendTextCell(row, entity.systemic_risk_score);
+
+            const tier = String(entity.risk_tier ?? "—");
+            const lowerTier = tier.toLowerCase();
+
+            let tierClass = "";
+
+            if (lowerTier.includes("high")) {
+                tierClass = "risk-high";
+            } else if (
+                lowerTier.includes("moderate") ||
+                lowerTier.includes("medium")
+            ) {
+                tierClass = "risk-medium";
+            } else if (lowerTier.includes("low")) {
+                tierClass = "risk-low";
+            }
+
+            appendTextCell(row, tier, tierClass);
+            body.appendChild(row);
+        });
+    }
+
+    // Normalize warning bands to the filter's four possible categories.
+    function normalizeRiskBand(value) {
+        const band = String(value ?? "").trim().toLowerCase();
+
+        if (band.includes("high")) return "high";
+
+        if (band.includes("moderate") || band.includes("medium")) {
+            return "moderate";
+        }
+
+        if (band.includes("low")) return "low";
+
+        return "unknown";
+    }
+
+    function getPredictionInfo(item) {
+        const lrProbability =
+            item.logistic_regression_probability == null
+                ? NaN
+                : Number(item.logistic_regression_probability);
+
+        const rfProbability =
+            item.random_forest_probability == null
+                ? NaN
+                : Number(item.random_forest_probability);
+
+        // Prefer explicit model predictions supplied by the backend.
+        // The 0.5 cutoff is only a display fallback when class predictions
+        // are not supplied by the backend.
+        const lrPrediction =
+            item.logistic_regression_prediction != null
+                ? Number(item.logistic_regression_prediction)
+                : (
+                    Number.isFinite(lrProbability)
+                        ? Number(lrProbability >= 0.5)
+                        : null
+                );
+
+        const rfPrediction =
+            item.random_forest_prediction != null
+                ? Number(item.random_forest_prediction)
+                : (
+                    Number.isFinite(rfProbability)
+                        ? Number(rfProbability >= 0.5)
+                        : null
+                );
+
+        const canCompare =
+            lrPrediction !== null &&
+            rfPrediction !== null &&
+            Number.isFinite(lrPrediction) &&
+            Number.isFinite(rfPrediction);
+
+        const agrees =
+            canCompare && lrPrediction === rfPrediction;
+
+        const agreement = !canCompare
+            ? "unavailable"
+            : agrees
+                ? "agree"
+                : "disagree";
+
+        const maxProbability = Math.max(
+            Number.isFinite(lrProbability) ? lrProbability : -1,
+            Number.isFinite(rfProbability) ? rfProbability : -1
+        );
+
+        return {
+            lrProbability,
+            rfProbability,
+            lrPrediction,
+            rfPrediction,
+            canCompare,
+            agrees,
+            agreement,
+            riskBand: normalizeRiskBand(
+                item.random_forest_warning_band
+            ),
+            maxProbability
+        };
+    }
+
+    function populateScenarioFilter(warnings) {
+        const control = document.getElementById("ml-scenario-filter");
+        const previousValue = control.value;
+
+        const scenarios = [
+            ...new Set(
+                warnings
+                    .map(item => item.scenario_id)
+                    .filter(value => value != null && value !== "")
+                    .map(String)
+            )
+        ].sort();
+
+        control.replaceChildren(
+            new Option("All scenarios", "all")
+        );
+
+        scenarios.forEach(scenario => {
+            control.add(new Option(scenario, scenario));
+        });
+
+        if (scenarios.includes(previousValue)) {
+            control.value = previousValue;
+        }
+    }
+
+    function renderMLWarnings() {
+        if (!analyticsData) return;
+
+        const warnings = analyticsData.ml_warnings ?? [];
+
+        const body = document.getElementById("ml-table-body");
+        const resultsCount = document.getElementById("ml-results-count");
+
+        const limitControl = document.getElementById("ml-limit");
+        const riskControl = document.getElementById("ml-risk-filter");
+        const scenarioControl = document.getElementById("ml-scenario-filter");
+        const agreementControl = document.getElementById("ml-agreement-filter");
+        const entitySearchControl = document.getElementById("ml-entity-search");
+
+        const riskFilter = riskControl.value;
+        const scenarioFilter = scenarioControl.value;
+        const agreementFilter = agreementControl.value;
+
+        const entityQuery = entitySearchControl.value
+            .trim()
+            .toLowerCase();
+
+        const filtered = warnings
+            .map(item => ({
+                item,
+                info: getPredictionInfo(item)
+            }))
+            .filter(({ item, info }) => {
+                const bandMatches =
+                    riskFilter === "all" ||
+                    info.riskBand === riskFilter;
+
+                const scenarioMatches =
+                    scenarioFilter === "all" ||
+                    String(item.scenario_id ?? "") === scenarioFilter;
+
+                const agreementMatches =
+                    agreementFilter === "all" ||
+                    info.agreement === agreementFilter;
+
+                const entityMatches =
+                    !entityQuery ||
+                    String(item.entity_id ?? "")
+                        .toLowerCase()
+                        .includes(entityQuery);
+
+                return (
+                    bandMatches &&
+                    scenarioMatches &&
+                    agreementMatches &&
+                    entityMatches
+                );
+            })
+            // Sort by the higher of LR and RF probabilities.
+            .sort((a, b) =>
+                b.info.maxProbability - a.info.maxProbability
+            );
+
+        const limit = limitControl.value === "all"
+            ? filtered.length
+            : Number(limitControl.value);
+
+        const visible = filtered.slice(0, limit);
+
+        resultsCount.textContent =
+            `Showing ${visible.length} of ${filtered.length} matching records ` +
+            `(${warnings.length} total). Sorted by the higher of the two model scores.`;
+
+        body.replaceChildren();
+
+        if (!visible.length) {
+            setEmptyRow(
+                body,
+                6,
+                "No ML-warning records match the selected filters."
+            );
+            return;
+        }
+
+        visible.forEach(({ item, info }) => {
+            const row = document.createElement("tr");
+
+            appendTextCell(row, item.entity_id);
+            appendTextCell(row, item.scenario_id);
+
+            appendTextCell(
+                row,
+                formatPercent(item.logistic_regression_probability)
+            );
+
+            appendTextCell(
+                row,
+                formatPercent(item.random_forest_probability)
+            );
+
+            const warningBand =
+                item.random_forest_warning_band ?? "Unknown";
+
+            const bandClass = {
+                high: "risk-high",
+                moderate: "risk-medium",
+                low: "risk-low"
+            }[info.riskBand] ?? "";
+
+            appendTextCell(row, warningBand, bandClass);
+
+            let agreementClass = "";
+
+            if (info.agreement === "agree") {
+                agreementClass = "risk-low";
+            } else if (info.agreement === "disagree") {
+                agreementClass = "risk-high";
+            }
+
+            const agreementCell = appendTextCell(
+                row,
+                info.agreement === "agree"
+                    ? "Agree"
+                    : info.agreement === "disagree"
+                        ? "Disagree"
+                        : "Unavailable",
+                agreementClass
+            );
+
+            if (info.agreement === "disagree") {
+                agreementCell.title =
+                    "The two models predict different classes. " +
+                    "The displayed warning band is still based on Random Forest.";
+            }
+
+            body.appendChild(row);
+        });
+    }
+
+    async function loadAnalytics() {
+        const status = document.getElementById("analytics-status");
+        const note = document.getElementById("analytics-note");
+
+        try {
+            status.textContent = "Loading analytics...";
+
+            const response = await fetch("/api/analytics");
+
+            if (!response.ok) {
+                throw new Error(
+                    `Analytics API returned HTTP ${response.status}`
+                );
+            }
+
+            const data = await response.json();
+            analyticsData = data;
+
+            
+            const summary = data.summary ?? {};
+            const scenarios = Array.isArray(summary.scenarios)
+                ? summary.scenarios
+                : [];
+
+            const scenarioIds = scenarios.map(item => item.scenario_id);
+
+            let selector = document.getElementById("stress-scenario-filter");
+
+            if (!selector) {
+                selector = document.createElement("select");
+                selector.id = "stress-scenario-filter";
+                selector.setAttribute("aria-label", "Select financial stress scenario");
+                selector.style.margin = "0 0 12px 0";
+                selector.style.padding = "8px 12px";
+                selector.style.borderRadius = "8px";
+                selector.style.background = "#111c2e";
+                selector.style.color = "inherit";
+                selector.style.border = "1px solid #334155";
+
+                const header = document.querySelector(
+                    ".analytics-section .panel-header"
+                );
+
+                header.appendChild(selector);
+            }
+
+            const previousScenario = selector.value;
+
+            selector.replaceChildren();
+
+            scenarios.forEach(item => {
+                const option = document.createElement("option");
+                option.value = item.scenario_id;
+                option.textContent = item.scenario_id.replace("SCENARIO_", "");
+                selector.appendChild(option);
+            });
+
+            selector.value = scenarioIds.includes(previousScenario)
+                ? previousScenario
+                : (scenarioIds.includes("SCENARIO_MODERATE")
+                    ? "SCENARIO_MODERATE"
+                    : scenarioIds[0] ?? "");
+
+            function renderStressScenario() {
+                const selected = scenarios.find(
+                    item => item.scenario_id === selector.value
+                );
+
+                if (!selected) {
+                    return;
+                }
+
+                document.getElementById("credit-loss").textContent =
+                    formatINR(selected.credit_loss);
+
+                document.getElementById("market-loss").textContent =
+                    formatINR(selected.market_loss);
+
+                document.getElementById("interest-loss").textContent =
+                    formatINR(selected.interest_rate_loss);
+
+                document.getElementById("funding-withdrawals").textContent =
+                    formatINR(selected.funding_withdrawal);
+
+                document.getElementById("accounting-loss").textContent =
+                    formatINR(selected.total_accounting_loss);
+
+                document.getElementById("liquidity-shortfall").textContent =
+                    formatINR(selected.liquidity_shortfall);
+
+                document.getElementById("negative-equity").textContent =
+                    formatNumber(selected.entities_with_negative_stressed_equity);
+
+                document.getElementById("entities-assessed").textContent =
+                    formatNumber(selected.entity_count);
+
+                note.textContent =
+                    `Selected scenario: ${selected.scenario_id}. ` +
+                    `Basis: ${selected.assumption_basis ?? summary.assumption_basis ?? "Not specified"}. ` +
+                    "These figures reflect the project's synthetic stress assumptions.";
+            }
+
+            selector.onchange = renderStressScenario;
+            renderStressScenario();
+
+
+            renderRiskEntities(data.top_risk_entities ?? []);
+
+            populateScenarioFilter(data.ml_warnings ?? []);
+            renderMLWarnings();
+
+            status.textContent = "Analytics loaded";
+        } catch (error) {
+            console.error("Failed to load financial analytics:", error);
+
+            status.textContent = "Analytics unavailable";
+
+            note.textContent =
+                "Could not load analytics. Check that the API is running " +
+                "and /api/analytics is accessible.";
+
+            setEmptyRow(
+                document.getElementById("risk-table-body"),
+                5,
+                "Risk rankings could not be loaded."
+            );
+
+            setEmptyRow(
+                document.getElementById("ml-table-body"),
+                6,
+                "ML predictions could not be loaded."
+            );
+
+            document.getElementById("ml-results-count").textContent =
+                "ML warning records are unavailable.";
+        }
+    }
+
+        
+    let scenarioContagionData = null;
+
+    // Match column names flexibly because the API returns the saved CSV columns.
+    function findContagionField(row, candidates) {
+        const keys = Object.keys(row || {});
+        const normalized = new Map(
+            keys.map(key => [
+                key.toLowerCase().replace(/[^a-z0-9]/g, ""),
+                key
+            ])
+        );
+
+        for (const candidate of candidates) {
+            const key = normalized.get(
+                candidate.toLowerCase().replace(/[^a-z0-9]/g, "")
+            );
+
+            if (key !== undefined) return key;
+        }
+
+        return null;
+    }
+
+    function contagionValue(row, candidates) {
+        const key = findContagionField(row, candidates);
+        return key === null ? null : row[key];
+    }
+
+    function isTrueValue(value) {
+        return value === true || value === 1 ||
+            String(value).toLowerCase() === "true" ||
+            String(value) === "1";
+    }
+
+    function formatContagionColumnName(name) {
+        return name
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function renderContagionScenario() {
+        const status = document.getElementById("contagion-scenario-status");
+        const note = document.getElementById("contagion-scenario-note");
+        const body = document.getElementById("contagion-table-body");
+        const head = document.getElementById("contagion-table-head");
+
+        if (!scenarioContagionData ||
+            !Array.isArray(scenarioContagionData.results)) {
+            return;
+        }
+
+        const scenarioId =
+            document.getElementById("contagion-scenario-filter").value;
+
+        const allRows = scenarioContagionData.results;
+        const rows = allRows.filter(row =>
+            String(contagionValue(row, ["scenario_id"]) ?? "") === scenarioId
+        );
+
+        if (!rows.length) {
+            status.textContent = "No records";
+            note.textContent =
+                `No saved contagion records were found for ${scenarioId}.`;
+            for (const id of [
+                "contagion-entity-count",
+                "contagion-affected-count",
+                "contagion-default-count",
+                "contagion-loss-total"
+            ]) {
+                document.getElementById(id).textContent = "—";
+            }
+            setEmptyRow(body, 1, "No contagion records for this scenario.");
+            return;
+        }
+
+        // Round zero records represent initial states; later rounds record
+        // propagation. Use the latest available row for each entity in summaries.
+        const entityField = findContagionField(rows[0], ["entity_id"]);
+        const roundField = findContagionField(
+            rows[0],
+            ["round", "propagation_round", "contagion_round", "wave"]
+        );
+
+        const latestByEntity = new Map();
+
+        for (const row of rows) {
+            const entityId = entityField ? String(row[entityField]) : null;
+            if (entityId === null) continue;
+
+            const round = Number(roundField ? row[roundField] : 0);
+            const previous = latestByEntity.get(entityId);
+
+            if (!previous || round >= previous.round) {
+                latestByEntity.set(entityId, { row, round });
+            }
+        }
+
+        const entityRows = [...latestByEntity.values()].map(item => item.row);
+
+        const statusField = findContagionField(
+            entityRows[0],
+            ["status", "entity_status", "default_status"]
+        );
+
+        const defaultField = findContagionField(
+            entityRows[0],
+            ["newly_defaulted", "is_defaulted", "defaulted"]
+        );
+
+        const lossField = findContagionField(
+            entityRows[0],
+            [
+                "round_loss",
+                "incremental_contagion_loss",
+                "contagion_loss",
+                "loss_this_round",
+                "incremental_loss",
+                "loss_amount"
+            ]
+        );
+
+        const equityBeforeField = findContagionField(
+            entityRows[0],
+            ["equity_before", "equity_before_losses"]
+        );
+
+        const equityAfterField = findContagionField(
+            entityRows[0],
+            ["equity_after", "equity_after_losses"]
+        );
+
+        const affected = new Set();
+        let additionalDefaults = 0;
+        let incrementalLossTotal = 0;
+        let lossAvailable = Boolean(lossField);
+
+        for (const row of entityRows) {
+            const entityId = String(row[entityField]);
+
+            const round = Number(roundField ? row[roundField] : 0);
+            const state = String(statusField ? row[statusField] : "")
+                .toLowerCase();
+
+            const isAdditionalDefault = defaultField
+                ? isTrueValue(row[defaultField])
+                : state.includes("default") &&
+                !state.includes("initial") &&
+                round > 0;
+
+            if (isAdditionalDefault) additionalDefaults++;
+
+            const before = Number(
+                equityBeforeField ? row[equityBeforeField] : NaN
+            );
+            const after = Number(
+                equityAfterField ? row[equityAfterField] : NaN
+            );
+
+            const hasEquityEvidence =
+                Number.isFinite(before) && Number.isFinite(after);
+
+            const hasLossEvidence = lossField !== null &&
+                Number.isFinite(Number(row[lossField]));
+
+            if (
+                round > 0 &&
+                (isAdditionalDefault ||
+                state.includes("affected") ||
+                (hasEquityEvidence && after < before) ||
+                (hasLossEvidence && Number(row[lossField]) > 0))
+            ) {
+                affected.add(entityId);
+            }
+
+        }
+
+        // Sum recorded round losses across propagation records.
+        // Do not sum cumulative_contagion_loss, which would double-count.
+        incrementalLossTotal = 0;
+        lossAvailable = Boolean(lossField);
+
+        if (lossField) {
+            for (const row of rows) {
+                const round = Number(
+                    roundField ? row[roundField] : 0
+                );
+
+                // Round zero represents the initial state, not propagation.
+                if (round <= 0) continue;
+
+                const loss = Number(row[lossField]);
+
+                if (!Number.isFinite(loss)) {
+                    lossAvailable = false;
+                    break;
+                }
+
+                incrementalLossTotal += loss;
+            }
+        }
+
+        document.getElementById("contagion-entity-count").textContent =
+            formatNumber(entityRows.length);
+
+        document.getElementById("contagion-affected-count").textContent =
+            formatNumber(affected.size);
+
+        document.getElementById("contagion-default-count").textContent =
+            formatNumber(additionalDefaults);
+
+        document.getElementById("contagion-loss-total").textContent =
+            lossAvailable ? formatINR(incrementalLossTotal) : "Unavailable";
+
+        note.textContent =
+            `${scenarioId}: ${rows.length} propagation records. ` +
+            `Summary uses the latest saved row per entity. ` +
+            (lossAvailable
+                ? "Loss total is calculated from the detected loss column."
+                : "The saved results do not expose a recognized loss column; " +
+                "losses are not inferred from equity changes.");
+
+        // Display the actual available columns rather than assuming a schema.
+        const columns = Object.keys(rows[0]);
+        head.replaceChildren();
+
+        const headerRow = document.createElement("tr");
+        columns.forEach(column => {
+            const th = document.createElement("th");
+            th.textContent = formatContagionColumnName(column);
+            headerRow.appendChild(th);
+        });
+        head.appendChild(headerRow);
+
+        body.replaceChildren();
+
+        // Keep the table readable even if the saved output is large.
+        const visibleRows = rows.slice(0, 100);
+
+        for (const row of visibleRows) {
+            const tr = document.createElement("tr");
+
+            for (const column of columns) {
+                const value = row[column];
+                appendTextCell(
+                    tr,
+                    value == null
+                        ? "—"
+                        : typeof value === "number"
+                            ? formatNumber(value)
+                            : value
+                );
+            }
+
+            body.appendChild(tr);
+        }
+
+        if (rows.length > visibleRows.length) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = columns.length;
+            td.className = "empty-row";
+            td.textContent =
+                `Showing the first ${visibleRows.length} of ${rows.length} records.`;
+            tr.appendChild(td);
+            body.appendChild(tr);
+        }
+
+        status.textContent = "Contagion results loaded";
+    }
+
+    async function loadScenarioContagion() {
+        const status = document.getElementById("contagion-scenario-status");
+
+        try {
+            status.textContent = "Loading contagion results...";
+
+            const response = await fetch("/api/contagion/scenarios");
+
+            if (!response.ok) {
+                throw new Error(
+                    `Scenario contagion API returned HTTP ${response.status}`
+                );
+            }
+
+            scenarioContagionData = await response.json();
+
+            if (!Array.isArray(scenarioContagionData.results)) {
+                throw new Error("The API response does not contain a results array.");
+            }
+
+            const selector =
+                document.getElementById("contagion-scenario-filter");
+
+            const available = new Set(
+                scenarioContagionData.results.map(row =>
+                    String(contagionValue(row, ["scenario_id"]) ?? "")
+                )
+            );
+
+            // Retain only scenario choices returned by the API.
+            [...selector.options].forEach(option => {
+                option.disabled = !available.has(option.value);
+            });
+
+            if (!available.has(selector.value)) {
+                selector.value = [
+                    "SCENARIO_MODERATE",
+                    "SCENARIO_MILD",
+                    "SCENARIO_SEVERE",
+                    "SCENARIO_EXTREME"
+                ].find(id => available.has(id)) || "";
+            }
+
+            renderContagionScenario();
+        } catch (error) {
+            console.error("Failed to load scenario contagion:", error);
+            status.textContent = "Contagion unavailable";
+            document.getElementById("contagion-scenario-note").textContent =
+                error.message || String(error);
+            setEmptyRow(
+                document.getElementById("contagion-table-body"),
+                1,
+                "Could not load scenario contagion records."
+            );
+        }
+    }
+
+    document.getElementById("contagion-scenario-filter")
+        .addEventListener("change", renderContagionScenario);
+
+    loadScenarioContagion();
+
+
+    // Refresh the visible ML table whenever a filter changes.
+    [
+        "ml-limit",
+        "ml-risk-filter",
+        "ml-scenario-filter",
+        "ml-agreement-filter"
+    ].forEach(id => {
+        document.getElementById(id).addEventListener(
+            "change",
+            renderMLWarnings
+        );
+    });
+
+    document.getElementById("ml-entity-search")
+        .addEventListener("input", renderMLWarnings);
+
+    // Load financial analytics after the page is initialized.
+    loadAnalytics();
+
+    // Switch workspaces without mixing document research into contagion analytics.
+    const workspaceButtons = document.querySelectorAll("[data-view]");
+    workspaceButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            const targetId = button.dataset.view;
+            document.querySelectorAll(".view").forEach(view => {
+                view.classList.toggle("active", view.id === targetId);
+            });
+            workspaceButtons.forEach(item => {
+                const active = item === button;
+                item.classList.toggle("active", active);
+                if (active) item.setAttribute("aria-current", "page");
+                else item.removeAttribute("aria-current");
+            });
+            const documentMode = targetId === "document-view";
+            document.getElementById("page-title").textContent =
+                documentMode ? "Document Research" : "Contagion Analytics";
+            document.getElementById("page-subtitle").textContent = documentMode
+                ? "Upload financial documents and explore their contents with source references"
+                : "Network exposure, stress propagation and early-warning intelligence";
+            if (!documentMode && cy) {
+                setTimeout(() => cy.resize(), 50);
+            }
+        });
+    });
+
+    // Chat foundation: conversation history, follow-ups, voice controls, and current PDF API integration.
+    let activeDocumentId = null;
+    let chatHistory = [];
+    let speakAnswers = false;
+    let pending = false;
+    const documentFile = document.getElementById("document-file");
+    const uploadButton = document.getElementById("upload-document-button");
+    const askButton = document.getElementById("ask-document-button");
+    const questionBox = document.getElementById("document-question");
+    const uploadStatus = document.getElementById("document-upload-status");
+    const documentIdDisplay = document.getElementById("document-id-display");
+    const answerStatus = document.getElementById("document-answer-status");
+    const sourcesBox = document.getElementById("document-sources");
+    const messagesBox = document.getElementById("chat-messages");
+    const welcomeBox = document.getElementById("chat-welcome");
+    const contextState = document.getElementById("chat-context-state");
+    const attachmentChip = document.getElementById("chat-attachment-chip");
+    const chatStatus = document.getElementById("chat-status");
+
+    function updateContext() {
+        contextState.textContent = activeDocumentId ? "PDF attached · document-grounded questions" : "General finance · no document attached";
+        attachmentChip.hidden = !activeDocumentId;
+        attachmentChip.textContent = activeDocumentId ? "📎 PDF attached to this chat" : "";
+    }
+    function addChatMessage(role, text, options = {}) {
+        if (welcomeBox) welcomeBox.remove();
+        const wrap = document.createElement("div");
+        wrap.className = `chat-message ${role}` + (options.pending ? " pending" : "");
+        const label = document.createElement("div"); label.className = "chat-role"; label.textContent = role === "user" ? "You" : "FINCONTAGION-X assistant";
+        const bubble = document.createElement("div"); bubble.className = "chat-bubble"; bubble.textContent = text;
+        wrap.append(label, bubble);
+        if (options.sources && options.sources.length) {
+            const src = document.createElement("div"); src.className = "message-sources"; src.textContent = "Sources: " + options.sources.map(x => typeof x === "string" ? x : (x.title || x.source || x.file || JSON.stringify(x))).join(" · ");
+            wrap.appendChild(src);
+        }
+        if (options.actions) {
+            const actions = document.createElement("div"); actions.className = "message-actions";
+            const read = document.createElement("button"); read.type = "button"; read.textContent = "🔊 Read aloud"; read.addEventListener("click", () => speakText(text)); actions.appendChild(read);
+            wrap.appendChild(actions);
+        }
+        messagesBox.appendChild(wrap); messagesBox.scrollTop = messagesBox.scrollHeight;
+        return wrap;
+    }
+    function speakText(text) {
+        if (!("speechSynthesis" in window)) { answerStatus.textContent = "Speech output is not supported in this browser."; return; }
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-IN"; utterance.rate = 1;
+        window.speechSynthesis.speak(utterance);
+    }
+    function renderSources(sources) {
+        sourcesBox.replaceChildren();
+        if (!Array.isArray(sources) || !sources.length) { sourcesBox.textContent = "No source references were returned for this answer."; sourcesBox.className = "research-empty"; return; }
+        sourcesBox.className = "research-empty";
+        sources.forEach((item, i) => { const line = document.createElement("div"); line.className = "research-source"; line.textContent = `${i + 1}. ` + (typeof item === "string" ? item : (item.title || item.source || item.file || JSON.stringify(item))); sourcesBox.appendChild(line); });
+    }
+    async function sendMessage(overrideQuestion) {
+        const question = (overrideQuestion || questionBox.value).trim();
+        if (!question || pending) return;
+        questionBox.value = "";
+        chatHistory.push({ role: "user", content: question });
+        addChatMessage("user", question);
+        pending = true; askButton.disabled = true; chatStatus.textContent = "Thinking…";
+        answerStatus.classList.remove("research-error");
+        answerStatus.textContent = activeDocumentId ? "Searching the attached PDF…" : "Preparing answer…";
+        const pendingBubble = addChatMessage(
+            "assistant",
+            activeDocumentId
+                ? "Searching the document and preparing an answer…"
+                : "Preparing an answer with the local finance assistant…",
+            { pending: true }
+        );
+        
+        try {
+            let response;
+
+            if (!activeDocumentId) {
+                response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        question,
+                        history: chatHistory.slice(0, -1).slice(-12)
+                    })
+                });
+            } else {
+                response = await fetch(
+                    `/api/documents/${encodeURIComponent(activeDocumentId)}/ask`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            question,
+                            history: chatHistory.slice(-12)
+                        })
+                    }
+                );
+            }
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(
+                    result.detail || `Question failed (HTTP ${response.status}).`
+                );
+            }
+
+            const answer = result.answer || "No answer was returned.";
+            pendingBubble.remove();
+            chatHistory.push({ role: "assistant", content: answer });
+            addChatMessage("assistant", answer, {
+                sources: result.sources || [],
+                actions: true
+            });
+            renderSources(result.sources || []);
+            answerStatus.textContent = "Answer received. Check the source references when available.";
+            if (speakAnswers) speakText(answer);
+
+            
+        } catch (error) {
+            pendingBubble.remove();
+            const err = error.message || String(error);
+            addChatMessage("assistant", err);
+            answerStatus.textContent = err; answerStatus.classList.add("research-error");
+            renderSources([]);
+        } finally {
+            pending = false; askButton.disabled = false; chatStatus.textContent = "Ready"; questionBox.focus();
+        }
+    }
+    uploadButton.addEventListener("click", async () => {
+        const file = documentFile.files && documentFile.files[0];
+        uploadStatus.classList.remove("research-error");
+        if (!file) { uploadStatus.textContent = "Choose a file first."; uploadStatus.classList.add("research-error"); return; }
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const isTabular = /\.(csv|xlsx)$/i.test(file.name);
+        if (!isPdf) { uploadStatus.textContent = isTabular ? "CSV/Excel are selected, but the current backend upload route only supports PDF. We will enable tabular parsing in the backend phase; no upload was attempted." : "Unsupported format. Current backend integration supports PDF only."; uploadStatus.classList.add("research-error"); return; }
+        if (file.size > 20 * 1024 * 1024) { uploadStatus.textContent = "The selected file exceeds the 20 MB limit."; uploadStatus.classList.add("research-error"); return; }
+        uploadButton.disabled = true; uploadStatus.textContent = "Uploading PDF…";
+        try {
+            const formData = new FormData(); formData.append("file", file);
+            const response = await fetch("/api/documents/upload", { method: "POST", body: formData });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || `Upload failed (HTTP ${response.status}).`);
+            activeDocumentId = result.document_id || result.id || result.sha256 || null;
+            if (!activeDocumentId) throw new Error("The API response did not include a document ID.");
+            documentIdDisplay.textContent = `Document ID: ${activeDocumentId}`;
+            uploadStatus.textContent = result.status === "already_uploaded" ? "This PDF is already available. Ask questions about it." : "PDF uploaded. You can now ask questions about it.";
+            answerStatus.textContent = "Document attached to this chat."; updateContext();
+            addChatMessage("assistant", `Attached PDF: ${file.name}. Ask a question about its contents; follow-up questions remain in this conversation.`);
+        } catch (error) { uploadStatus.textContent = error.message || String(error); uploadStatus.classList.add("research-error"); }
+        finally { uploadButton.disabled = false; }
+    });
+    askButton.addEventListener("click", () => sendMessage());
+    questionBox.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); } });
+    document.getElementById("new-chat-button").addEventListener("click", () => {
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        chatHistory = []; messagesBox.replaceChildren();
+        const welcome = document.createElement("div"); welcome.className = "chat-welcome"; welcome.id = "chat-welcome";
+        welcome.innerHTML = '<div class="welcome-mark">FX</div><h3>New conversation</h3><p>Ask a finance question or attach a document to start researching.</p><div class="suggestion-list"><button type="button" class="suggestion-chip" data-prompt="Explain the difference between revenue, profit, cash flow, and working capital.">Revenue vs profit vs cash flow</button><button type="button" class="suggestion-chip" data-prompt="Explain how banks measure credit risk and calculate expected credit loss.">Bank credit risk</button><button type="button" class="suggestion-chip" data-prompt="What is financial contagion, and how can losses propagate from one bank to other institutions through exposures?">Financial contagion</button></div>';
+        messagesBox.appendChild(welcome); bindSuggestions(); renderSources([]); answerStatus.textContent = "New conversation started."; chatStatus.textContent = "Ready";
+    });
+    function bindSuggestions() { document.querySelectorAll("[data-prompt]").forEach(btn => { btn.onclick = () => sendMessage(btn.dataset.prompt); }); }
+    bindSuggestions();
+    document.getElementById("clear-document-button").addEventListener("click", () => {
+        documentFile.value = ""; activeDocumentId = null; documentIdDisplay.textContent = ""; uploadStatus.textContent = "Document context removed. General finance mode selected."; updateContext();
+    });
+    document.getElementById("voice-output-button").addEventListener("click", event => {
+        speakAnswers = !speakAnswers; event.currentTarget.setAttribute("aria-pressed", String(speakAnswers)); event.currentTarget.textContent = speakAnswers ? "🔊 Read answers: on" : "🔊 Read answers: off";
+        if (!speakAnswers && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    });
+    document.getElementById("voice-input-button").addEventListener("click", () => {
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Recognition) { answerStatus.textContent = "Voice input is not supported in this browser. You can still type your question."; return; }
+        const recognition = new Recognition(); recognition.lang = "en-IN"; recognition.interimResults = false; recognition.maxAlternatives = 1;
+        answerStatus.textContent = "Listening… speak your question.";
+        recognition.onresult = event => { questionBox.value = event.results[0][0].transcript; answerStatus.textContent = "Voice captured. Review it, then press Send."; questionBox.focus(); };
+        recognition.onerror = event => { answerStatus.textContent = `Voice input error: ${event.error}. You can type instead.`; };
+        recognition.onend = () => { if (answerStatus.textContent === "Listening… speak your question.") answerStatus.textContent = "Listening ended. Try again or type your question."; };
+        recognition.start();
+    });
+    updateContext();
+</script>
+</body>
+</html>

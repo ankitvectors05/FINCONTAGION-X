@@ -1,0 +1,81 @@
+entity_id,name,entity_type,country,base_currency,data_origin
+BANK_0001,Delhi Bank 0001,bank,India,INR,synthetic
+BANK_0002,Mumbai Bank 0002,bank,India,INR,synthetic
+BANK_0003,Hyderabad Bank 0003,bank,India,INR,synthetic
+BANK_0004,Chennai Bank 0004,bank,India,INR,synthetic
+BANK_0005,Chennai Bank 0005,bank,India,INR,synthetic
+BANK_0006,Bengaluru Bank 0006,bank,India,INR,synthetic
+BANK_0007,Delhi Bank 0007,bank,India,INR,synthetic
+BANK_0008,Jaipur Bank 0008,bank,India,INR,synthetic
+BANK_0009,Delhi Bank 0009,bank,India,INR,synthetic
+BANK_0010,Lucknow Bank 0010,bank,India,INR,synthetic
+NBFC_0001,Ahmedabad NBFC 0001,nbfc,India,INR,synthetic
+NBFC_0002,Mumbai NBFC 0002,nbfc,India,INR,synthetic
+NBFC_0003,Mumbai NBFC 0003,nbfc,India,INR,synthetic
+NBFC_0004,Delhi NBFC 0004,nbfc,India,INR,synthetic
+NBFC_0005,Chennai NBFC 0005,nbfc,India,INR,synthetic
+NBFC_0006,Chennai NBFC 0006,nbfc,India,INR,synthetic
+NBFC_0007,Jaipur NBFC 0007,nbfc,India,INR,synthetic
+NBFC_0008,Lucknow NBFC 0008,nbfc,India,INR,synthetic
+FUND_0001,Mumbai Investment Fund 0001,investment_fund,India,INR,synthetic
+FUND_0002,Jaipur Investment Fund 0002,investment_fund,India,INR,synthetic
+FUND_0003,Chennai Investment Fund 0003,investment_fund,India,INR,synthetic
+FUND_0004,Jaipur Investment Fund 0004,investment_fund,India,INR,synthetic
+FUND_0005,Ahmedabad Investment Fund 0005,investment_fund,India,INR,synthetic
+FUND_0006,Chennai Investment Fund 0006,investment_fund,India,INR,synthetic
+FUND_0007,Kolkata Investment Fund 0007,investment_fund,India,INR,synthetic
+FUND_0008,Lucknow Investment Fund 0008,investment_fund,India,INR,synthetic
+CORP_0001,Hyderabad Corporation 0001,corporation,India,INR,synthetic
+CORP_0002,Mumbai Corporation 0002,corporation,India,INR,synthetic
+CORP_0003,Bengaluru Corporation 0003,corporation,India,INR,synthetic
+CORP_0004,Ahmedabad Corporation 0004,corporation,India,INR,synthetic
+CORP_0005,Pune Corporation 0005,corporation,India,INR,synthetic
+CORP_0006,Hyderabad Corporation 0006,corporation,India,INR,synthetic
+CORP_0007,Bengaluru Corporation 0007,corporation,India,INR,synthetic
+CORP_0008,Chennai Corporation 0008,corporation,India,INR,synthetic
+CORP_0009,Pune Corporation 0009,corporation,India,INR,synthetic
+CORP_0010,Delhi Corporation 0010,corporation,India,INR,synthetic
+CORP_0011,Delhi Corporation 0011,corporation,India,INR,synthetic
+CORP_0012,Ahmedabad Corporation 0012,corporation,India,INR,synthetic
+CORP_0013,Delhi Corporation 0013,corporation,India,INR,synthetic
+CORP_0014,Pune Corporation 0014,corporation,India,INR,synthetic
+CORP_0015,Pune Corporation 0015,corporation,India,INR,synthetic
+CORP_0016,Lucknow Corporation 0016,corporation,India,INR,synthetic
+CORP_0017,Hyderabad Corporation 0017,corporation,India,INR,synthetic
+CORP_0018,Mumbai Corporation 0018,corporation,India,INR,synthetic
+CORP_0019,Kolkata Corporation 0019,corporation,India,INR,synthetic
+CORP_0020,Jaipur Corporation 0020,corporation,India,INR,synthetic
+CORP_0021,Delhi Corporation 0021,corporation,India,INR,synthetic
+CORP_0022,Ahmedabad Corporation 0022,corporation,India,INR,synthetic
+CORP_0023,Delhi Corporation 0023,corporation,India,INR,synthetic
+CORP_0024,Jaipur Corporation 0024,corporation,India,INR,synthetic
+SUP_0001,Hyderabad Supplier 0001,supplier,India,INR,synthetic
+SUP_0002,Lucknow Supplier 0002,supplier,India,INR,synthetic
+SUP_0003,Pune Supplier 0003,supplier,India,INR,synthetic
+SUP_0004,Lucknow Supplier 0004,supplier,India,INR,synthetic
+SUP_0005,Chennai Supplier 0005,supplier,India,INR,synthetic
+SUP_0006,Delhi Supplier 0006,supplier,India,INR,synthetic
+SUP_0007,Mumbai Supplier 0007,supplier,India,INR,synthetic
+SUP_0008,Chennai Supplier 0008,supplier,India,INR,synthetic
+SUP_0009,Hyderabad Supplier 0009,supplier,India,INR,synthetic
+SUP_0010,Delhi Supplier 0010,supplier,India,INR,synthetic
+SUP_0011,Chennai Supplier 0011,supplier,India,INR,synthetic
+SUP_0012,Delhi Supplier 0012,supplier,India,INR,synthetic
+SUP_0013,Ahmedabad Supplier 0013,supplier,India,INR,synthetic
+SUP_0014,Hyderabad Supplier 0014,supplier,India,INR,synthetic
+SUP_0015,Kolkata Supplier 0015,supplier,India,INR,synthetic
+SUP_0016,Pune Supplier 0016,supplier,India,INR,synthetic
+SUP_0017,Bengaluru Supplier 0017,supplier,India,INR,synthetic
+SUP_0018,Pune Supplier 0018,supplier,India,INR,synthetic
+SUP_0019,Pune Supplier 0019,supplier,India,INR,synthetic
+SUP_0020,Chennai Supplier 0020,supplier,India,INR,synthetic
+SUP_0021,Hyderabad Supplier 0021,supplier,India,INR,synthetic
+SUP_0022,Delhi Supplier 0022,supplier,India,INR,synthetic
+SUP_0023,Lucknow Supplier 0023,supplier,India,INR,synthetic
+SUP_0024,Bengaluru Supplier 0024,supplier,India,INR,synthetic
+SUP_0025,Jaipur Supplier 0025,supplier,India,INR,synthetic
+SUP_0026,Chennai Supplier 0026,supplier,India,INR,synthetic
+SUP_0027,Bengaluru Supplier 0027,supplier,India,INR,synthetic
+SUP_0028,Kolkata Supplier 0028,supplier,India,INR,synthetic
+SUP_0029,Ahmedabad Supplier 0029,supplier,India,INR,synthetic
+SUP_0030,Hyderabad Supplier 0030,supplier,India,INR,synthetic
