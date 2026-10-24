@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 from collections import defaultdict
 from math import isfinite
 from pathlib import Path
@@ -8,8 +8,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from fincontagion.rag.ingestion import extract_pdf_pages
-from fincontagion.rag.retrieval import FinancialRetriever
-from fincontagion.rag.generation import generate_answer
+
 from threading import Lock
 
 import json
@@ -22,6 +21,12 @@ from fincontagion.rag.document_store import (
     calculate_sha256,
     get_document_directory,
 )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fincontagion.rag.retrieval import FinancialRetriever
+
 
 
 # Locate the project root independently of the terminal's working directory.
@@ -180,6 +185,8 @@ RBI_CACHE_DIR = (
 
 
 def get_rbi_retriever() -> FinancialRetriever:
+
+    from fincontagion.rag.retrieval import FinancialRetriever
     """Load a saved RBI index or build and save it once."""
 
     global _rbi_retriever
@@ -212,6 +219,8 @@ _document_retrievers_lock = Lock()
 
 
 def get_document_retriever(document_id: str) -> FinancialRetriever:
+
+    from fincontagion.rag.retrieval import FinancialRetriever
     """Load or build a persistent search index for one uploaded PDF."""
 
     global _document_retrievers
@@ -295,6 +304,8 @@ def ask_financial_research(request: ResearchQuestion):
 
     try:
         retriever = get_rbi_retriever()
+
+        from fincontagion.rag.generation import generate_answer
 
         results = retriever.search(request.question.strip(), top_k=3)
         output = generate_answer(request.question.strip(), results)
@@ -471,6 +482,7 @@ def ask_uploaded_document(
         if stored_pdf.is_file():
             retriever = get_document_retriever(document_id)
             results = retriever.search(question, top_k=3)
+            from fincontagion.rag.generation import generate_answer
             output = generate_answer(question, results)
 
             return {
