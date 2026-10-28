@@ -55,19 +55,35 @@ class LightweightFinancialRetriever:
         self.vectorizer = vectorizer
         self.matrix = matrix
 
+    
     def save_index(self, index_dir: str | Path) -> None:
         """Persist chunks and vectorizer vocabulary without pickle/joblib."""
         if self.vectorizer is None or self.matrix is None or not self.chunks:
             raise RuntimeError("No indexed documents available to save.")
+
         path = Path(index_dir)
         path.mkdir(parents=True, exist_ok=True)
+
+        # Convert NumPy scalar values to standard Python values for JSON.
+        def json_safe(value):
+            if hasattr(value, "item"):
+                return value.item()
+            raise TypeError(
+                f"Object of type {type(value).__name__} is not JSON serializable"
+            )
+
         (path / "chunks.json").write_text(
-            json.dumps(self.chunks, ensure_ascii=False), encoding="utf-8"
+            json.dumps(self.chunks, ensure_ascii=False, default=json_safe),
+            encoding="utf-8",
         )
+
         metadata = {
             "model_name": self.MODEL_NAME,
-            "chunk_count": len(self.chunks),
-            "vocabulary": self.vectorizer.vocabulary_,
+            "chunk_count": int(len(self.chunks)),
+            "vocabulary": {
+                str(term): int(index)
+                for term, index in self.vectorizer.vocabulary_.items()
+            },
             "idf": self.vectorizer.idf_.tolist(),
             "vectorizer": {
                 "ngram_range": [1, 2],
@@ -75,9 +91,12 @@ class LightweightFinancialRetriever:
                 "max_features": 100_000,
             },
         }
+
         (path / "metadata.json").write_text(
-            json.dumps(metadata), encoding="utf-8"
+            json.dumps(metadata, ensure_ascii=False, default=json_safe),
+            encoding="utf-8",
         )
+
 
     def load_index(self, index_dir: str | Path) -> None:
         path = Path(index_dir)
