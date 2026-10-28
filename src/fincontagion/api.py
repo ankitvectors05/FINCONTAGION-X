@@ -550,7 +550,10 @@ def general_finance_chat(request: ChatRequest):
             "mode": "general_chat",
         }
     except Exception as exc:
-        print(f"LLM CHAT ERROR: {type(exc).__name__}", flush=True)
+        print(
+            f"LLM CHAT ERROR: {type(exc).__name__}: {str(exc)[:500]}",
+            flush=True,
+        )
         raise HTTPException(
             status_code=502,
             detail=f"LLM request failed: {type(exc).__name__}.",
