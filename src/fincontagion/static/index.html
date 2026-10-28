@@ -393,6 +393,24 @@
         }
 
     </style>
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+
+    <script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['\\(', '\\)'], ['$','$']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        },
+        startup: {
+            typeset: false
+        }
+    };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
 </head>
 
 <body>
@@ -2207,25 +2225,78 @@
         attachmentChip.hidden = !activeDocumentId;
         attachmentChip.textContent = activeDocumentId ? "📎 PDF attached to this chat" : "";
     }
-    function addChatMessage(role, text, options = {}) {
-        if (welcomeBox) welcomeBox.remove();
-        const wrap = document.createElement("div");
-        wrap.className = `chat-message ${role}` + (options.pending ? " pending" : "");
-        const label = document.createElement("div"); label.className = "chat-role"; label.textContent = role === "user" ? "You" : "FINCONTAGION-X assistant";
-        const bubble = document.createElement("div"); bubble.className = "chat-bubble"; bubble.textContent = text;
-        wrap.append(label, bubble);
-        if (options.sources && options.sources.length) {
-            const src = document.createElement("div"); src.className = "message-sources"; src.textContent = "Sources: " + options.sources.map(x => typeof x === "string" ? x : (x.title || x.source || x.file || JSON.stringify(x))).join(" · ");
-            wrap.appendChild(src);
+    
+function addChatMessage(role, text, options = {}) {
+    if (welcomeBox) welcomeBox.remove();
+
+    const wrap = document.createElement("div");
+    wrap.className = `chat-message ${role}` +
+        (options.pending ? " pending" : "");
+
+    const label = document.createElement("div");
+    label.className = "chat-role";
+    label.textContent =
+        role === "user" ? "You" : "FINCONTAGION-X assistant";
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+
+    if (role === "assistant" && !options.pending) {
+        // Render Markdown, then sanitize the generated HTML.
+        if (window.marked && window.DOMPurify) {
+            bubble.innerHTML = DOMPurify.sanitize(
+                marked.parse(text, { breaks: true })
+            );
+        } else {
+            // Safe fallback if the libraries haven't loaded.
+            bubble.textContent = text;
         }
-        if (options.actions) {
-            const actions = document.createElement("div"); actions.className = "message-actions";
-            const read = document.createElement("button"); read.type = "button"; read.textContent = "🔊 Read aloud"; read.addEventListener("click", () => speakText(text)); actions.appendChild(read);
-            wrap.appendChild(actions);
-        }
-        messagesBox.appendChild(wrap); messagesBox.scrollTop = messagesBox.scrollHeight;
-        return wrap;
+    } else {
+        // Keep user messages and pending messages as plain text.
+        bubble.textContent = text;
     }
+
+    wrap.append(label, bubble);
+
+    if (options.sources && options.sources.length) {
+        const src = document.createElement("div");
+        src.className = "message-sources";
+        src.textContent = "Sources: " +
+            options.sources.map(x =>
+                typeof x === "string"
+                    ? x
+                    : (x.title || x.source || x.file || JSON.stringify(x))
+            ).join(" · ");
+        wrap.appendChild(src);
+    }
+
+    if (options.actions) {
+        const actions = document.createElement("div");
+        actions.className = "message-actions";
+
+        const read = document.createElement("button");
+        read.type = "button";
+        read.textContent = "🔊 Read aloud";
+        read.addEventListener("click", () => speakText(text));
+
+        actions.appendChild(read);
+        wrap.appendChild(actions);
+    }
+
+    messagesBox.appendChild(wrap);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+
+    // Typeset formulas after the message is added to the DOM.
+    if (role === "assistant" &&
+        !options.pending &&
+        window.MathJax &&
+        window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([bubble]).catch(console.error);
+    }
+
+    return wrap;
+}
+
     function speakText(text) {
         if (!("speechSynthesis" in window)) { answerStatus.textContent = "Speech output is not supported in this browser."; return; }
         window.speechSynthesis.cancel();

@@ -179,15 +179,16 @@ async def upload_document(file: UploadFile = File(...)):
 _rbi_retriever = None
 _rbi_retriever_lock = Lock()
 
-RBI_CACHE_DIR = (
-    PROJECT_ROOT / "data" / "processed" / "rag_cache_test"
-)
+RBI_CACHE_DIR = Path(os.getenv("FINCONTAGION_RBI_CACHE_DIR", str(PROJECT_ROOT / "data" / "processed" / ("rag_cache_tfidf" if os.getenv("FINCONTAGION_RETRIEVAL_BACKEND", "semantic").lower() == "tfidf" else "rag_cache_test"))))
 
 
 def get_rbi_retriever() -> FinancialRetriever:
 
-    from fincontagion.rag.retrieval import FinancialRetriever
     """Load a saved RBI index or build and save it once."""
+    if os.getenv("FINCONTAGION_RETRIEVAL_BACKEND", "semantic").lower() == "tfidf":
+        from fincontagion.rag.lightweight_retrieval import LightweightFinancialRetriever as FinancialRetriever
+    else:
+        from fincontagion.rag.retrieval import FinancialRetriever
 
     global _rbi_retriever
 
@@ -219,9 +220,11 @@ _document_retrievers_lock = Lock()
 
 
 def get_document_retriever(document_id: str) -> FinancialRetriever:
-
-    from fincontagion.rag.retrieval import FinancialRetriever
     """Load or build a persistent search index for one uploaded PDF."""
+    if os.getenv("FINCONTAGION_RETRIEVAL_BACKEND", "semantic").lower() == "tfidf":
+        from fincontagion.rag.lightweight_retrieval import LightweightFinancialRetriever as FinancialRetriever
+    else:
+        from fincontagion.rag.retrieval import FinancialRetriever
 
     global _document_retrievers
 
@@ -395,62 +398,22 @@ def answer_tabular_question(
         "Be concise and identify the worksheet or column when relevant."
     )
 
-    payload = {
-        "model": OLLAMA_MODEL_NAME,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": (
-                    f"Question: {question}\n\n"
-                    f"Computed dataset profiles:\n"
-                    f"{json.dumps(profiles, default=str)}"
-                ),
-            },
-        ],
-        "stream": False,
-        "think": False,
-    }
-
-    request = Request(
-        OLLAMA_CHAT_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    from fincontagion.rag.llm_client import chat
 
     try:
-        with urlopen(request, timeout=300) as response:
-            result = json.loads(response.read().decode("utf-8"))
-
-        answer = result.get("message", {}).get("content", "").strip()
-        if not answer:
-            raise HTTPException(
-                status_code=502,
-                detail="The local model returned an empty answer.",
-            )
-
+        answer = chat([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": (
+                f"Question: {question}\n\nComputed dataset profiles:\n"
+                f"{json.dumps(profiles, default=str)}"
+            )},
+        ], temperature=0.1, max_tokens=500)
         return {
             "answer": answer,
-            "sheets": [
-                {
-                    "name": item["sheet"],
-                    "rows": item["rows"],
-                    "columns": item["columns"],
-                }
-                for item in profiles
-            ],
+            "sheets": [{"name": item["sheet"], "rows": item["rows"], "columns": item["columns"]} for item in profiles],
         }
-
-    except HTTPException:
-        raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Tabular analysis failed: {type(exc).__name__}: {exc}",
-        ) from exc
-
-
+        raise HTTPException(status_code=502, detail=f"Tabular analysis LLM request failed: {type(exc).__name__}.") from exc
 
 
 @app.post("/api/documents/{document_id}/ask")
@@ -576,68 +539,23 @@ def general_finance_chat(request: ChatRequest):
         "content": question,
     })
 
-    payload = {
-        "model": OLLAMA_MODEL_NAME,
-        "messages": messages,
-        "stream": False,
-        "think": False,
-    }
-
-    ollama_request = Request(
-        OLLAMA_CHAT_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    from fincontagion.rag.llm_client import chat
 
     try:
-        with urlopen(ollama_request, timeout=300) as response:
-            result = json.loads(response.read().decode("utf-8"))
-
-        answer = result.get("message", {}).get("content", "").strip()
-
-        if not answer:
-            raise HTTPException(
-                status_code=502,
-                detail="The local model returned an empty response.",
-            )
-
+        answer = chat(messages, temperature=0.2, max_tokens=600)
         return {
             "question": question,
             "answer": answer,
-            "model": "qwen3:1.7b",
+            "model": os.getenv("LLM_MODEL", os.getenv("OLLAMA_MODEL_NAME", "qwen3:1.7b")),
             "mode": "general_chat",
         }
-
-    except HTTPException:
-        raise
-
-    except HTTPError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Ollama returned HTTP {exc.code}.",
-        ) from exc
-
-    except HTTPException:
-            raise
-
     except Exception as exc:
-        print(
-            f"OLLAMA CHAT ERROR: {type(exc).__name__}: {exc}",
-            flush=True,
-        )
+        print(f"LLM CHAT ERROR: {type(exc).__name__}", flush=True)
         raise HTTPException(
             status_code=502,
-            detail=f"Local LLM request failed: {type(exc).__name__}: {exc}",
+            detail=f"LLM request failed: {type(exc).__name__}.",
         ) from exc
 
-    except (json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="The local model returned an invalid response.",
-        ) from exc
-
-    
 @app.get("/", include_in_schema=False)
 def home():
     return RedirectResponse(url="/dashboard")
